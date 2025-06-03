@@ -1,0 +1,117 @@
+/* Стилі для компонентів карти */
+.map-view-section {
+    padding: 20px;
+    margin-bottom: 40px;
+}
+
+.map-tabs {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.map-tab {
+    padding: 10px 20px;
+    margin: 0 10px;
+    background-color: #e3e3e3;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.map-tab.active, .map-tab:hover {
+    background-color: #1D1340;
+    color: white;
+}
+
+.map-container {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    margin-top: 20px;
+    margin-bottom: 60px;
+}
+
+#interactive-map, .map-component-container {
+    width: 65%;
+    height: 500px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.map-info {
+    width: 35%;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#map-destinations, .map-tours-list {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+}
+
+.map-destination, .map-tour-item {
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    background-color: #e9ecef;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.map-destination:hover, .map-tour-item:hover {
+    background-color: #dee2e6;
+}
+
+.map-destination.active, .map-tour-item.active {
+    background-color: #223440;
+    color: white;
+}
+
+.map-destination-info, .selected-tour-info {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.attractions-info {
+    text-align: center;
+    padding: 40px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+
+.map-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 500px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    font-size: 18px;
+    color: #1D1340;
+}
+
+/* Адаптивність для планшетів та мобільних */
+@media (max-width: 768px) {
+    .map-container {
+        flex-direction: column;
+    }
+
+    #interactive-map, .map-component-container, .map-info {
+        width: 100%;
+    }
+
+    #interactive-map, .map-component-container {
+        height: 300px;
+        margin-bottom: 20px;
+    }
+}
