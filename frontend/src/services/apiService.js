@@ -2,10 +2,7 @@
 
 import { auth } from '../config/firebase';
 
-// URL API з змінних середовища з fallback на хостинг Render
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://lab-5-backend-fwi7.onrender.com/api';
-
-console.log('API Base URL:', API_BASE_URL);
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 // Допоміжна функція для отримання токена авторизації
 const getAuthToken = async () => {
@@ -37,16 +34,13 @@ const makeRequest = async (endpoint, options = {}) => {
     }
 
     try {
-        console.log(`Making request to: ${url}`);
         const response = await fetch(url, config);
+        const data = await response.json();
 
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`HTTP ${response.status}: ${errorText}`);
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
         return data;
     } catch (error) {
         console.error(`API request failed: ${endpoint}`, error);

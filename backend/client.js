@@ -1,12 +1,9 @@
 // Приклад інтеграції серверної та клієнтської частини
 
-// URL API з змінних середовища або за замовчуванням
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://lab-5-backend-fwi7.onrender.com/api';
-
 // Функція для отримання даних з сервера
 async function fetchDataFromServer() {
     try {
-        const response = await fetch(`${API_BASE_URL}/health`);
+        const response = await fetch('http://localhost:5000/api/message');
         const data = await response.json();
         console.log(data.message);
         return data;
@@ -18,7 +15,7 @@ async function fetchDataFromServer() {
 // Функція для отримання відгуків
 async function getReviews() {
     try {
-        const response = await fetch(`${API_BASE_URL}/reviews`);
+        const response = await fetch('http://localhost:5000/api/reviews');
         const reviews = await response.json();
         console.log('Reviews:', reviews);
         return reviews;
@@ -30,7 +27,7 @@ async function getReviews() {
 // Функція для додавання відгуку
 async function addReview(userName, tourName, rating, comment) {
     try {
-        const response = await fetch(`${API_BASE_URL}/reviews`, {
+        const response = await fetch('http://localhost:5000/api/reviews', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -54,16 +51,15 @@ async function addReview(userName, tourName, rating, comment) {
 // Функція для отримання даних з захищеного маршруту
 async function getProtectedData() {
     try {
-        // Отримуємо токен з Firebase Auth
-        const user = firebase.auth().currentUser;
-        if (!user) {
+        // Припускаємо, що токен зберігається в localStorage
+        const token = localStorage.getItem('authToken');
+
+        if (!token) {
             alert('Please log in first.');
             return;
         }
 
-        const token = await user.getIdToken();
-
-        const response = await fetch(`${API_BASE_URL}/protected`, {
+        const response = await fetch('http://localhost:5000/api/protected', {
             headers: {
                 'Authorization': `Bearer ${token}`
             }

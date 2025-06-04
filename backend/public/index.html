@@ -144,13 +144,10 @@
 </div>
 
 <script>
-    // URL API з оновленою адресою
-    const API_BASE_URL = 'https://lab-5-backend-fwi7.onrender.com/api';
-
     // Функція для отримання повідомлення з сервера
     async function fetchServerMessage() {
         try {
-            const response = await fetch(`${API_BASE_URL}/health`);
+            const response = await fetch('http://localhost:5000/api/message');
             const data = await response.json();
             document.getElementById('server-message').innerHTML =
                 `<div class="success">Сервер відповів: ${data.message}</div>`;
@@ -163,7 +160,7 @@
     // Функція для завантаження відгуків
     async function loadReviews() {
         try {
-            const response = await fetch(`${API_BASE_URL}/reviews`);
+            const response = await fetch('http://localhost:5000/api/reviews');
             const reviews = await response.json();
 
             const container = document.getElementById('reviews-container');
@@ -206,7 +203,7 @@
         const comment = document.getElementById('comment').value;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/reviews`, {
+            const response = await fetch('http://localhost:5000/api/reviews', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
