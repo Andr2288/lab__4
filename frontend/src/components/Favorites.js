@@ -6,9 +6,9 @@ import {
     query,
     where,
     getDocs,
-    getDoc,
+    // getDoc, - видалили невикористаний імпорт
     doc,
-    addDoc,
+    // addDoc, - видалили невикористаний імпорт
     deleteDoc
 } from 'firebase/firestore';
 import { getAllTours } from '../services/tourService';
@@ -95,6 +95,28 @@ const Favorites = ({ isAuth, user }) => {
         }
     };
 
+    // Функція для обробки шляхів до зображень
+    const getImageUrl = (imagePath) => {
+        if (!imagePath) {
+            return `${process.env.PUBLIC_URL}/photo/placeholder.jpg`;
+        }
+
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+            return imagePath;
+        }
+
+        let cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+        return `${process.env.PUBLIC_URL}/${cleanPath}`;
+    };
+
+    // Обробник помилки завантаження зображення
+    const handleImageError = (e) => {
+        if (!e.target.src.includes('placeholder.jpg')) {
+            e.target.src = `${process.env.PUBLIC_URL}/photo/placeholder.jpg`;
+        }
+        e.target.onerror = null;
+    };
+
     if (loading) {
         return <div className="loading">Завантаження улюблених турів...</div>;
     }
@@ -112,7 +134,11 @@ const Favorites = ({ isAuth, user }) => {
                 <div className="tour-cards-container">
                     {favorites.map(tour => (
                         <div key={tour.id} className="tour-card" data-id={tour.id}>
-                            <img src={tour.imageUrl} alt={tour.name} />
+                            <img
+                                src={getImageUrl(tour.imageUrl)}
+                                alt={tour.name}
+                                onError={handleImageError}
+                            />
                             <button
                                 className="like-btn liked"
                                 onClick={() => removeFavorite(tour.id)}

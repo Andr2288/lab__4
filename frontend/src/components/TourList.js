@@ -27,26 +27,45 @@ const TourList = ({ isAuth, currentUser, openAuthModal }) => {
         { id: "japan", name: "Японія", image: "photo/japan.jpg" },
     ];
 
-    // Функція для виправлення шляхів до зображень
-    const fixImagePath = (imagePath) => {
-        if (!imagePath) return 'photo/placeholder.jpg'; // Шлях до зображення-заглушки
+    // Виправлена функція для обробки шляхів до зображень
+    const getImageUrl = (imagePath) => {
+        if (!imagePath) {
+            return `${process.env.PUBLIC_URL}/photo/placeholder.jpg`;
+        }
 
-        // Якщо шлях починається з http або https, то це повний URL
+        // Якщо це повний URL
         if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
             return imagePath;
         }
 
-        // Якщо шлях починається з "/", прибираємо його
-        if (imagePath.startsWith('/')) {
-            return imagePath.substring(1);
+        // Видаляємо початковий слеш якщо є
+        let cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+
+        // Формуємо повний шлях
+        return `${process.env.PUBLIC_URL}/${cleanPath}`;
+    };
+
+    // Обробник помилки завантаження зображення
+    const handleImageError = (e) => {
+        console.error('Помилка завантаження зображення:', e.target.src);
+
+        if (!e.target.src.includes('placeholder.jpg')) {
+            e.target.src = `${process.env.PUBLIC_URL}/photo/placeholder.jpg`;
+        } else {
+            // Якщо навіть placeholder не завантажується
+            e.target.style.backgroundColor = '#f0f0f0';
+            e.target.style.display = 'flex';
+            e.target.style.alignItems = 'center';
+            e.target.style.justifyContent = 'center';
+            e.target.style.color = '#666';
+            e.target.style.fontSize = '14px';
+            e.target.alt = 'Зображення недоступне';
         }
 
-        // Інакше повертаємо як є
-        return imagePath;
+        e.target.onerror = null;
     };
 
     useEffect(() => {
-        // Завантажуємо тури
         const fetchTours = async () => {
             try {
                 console.log('Отримуємо список всіх турів');
@@ -55,7 +74,6 @@ const TourList = ({ isAuth, currentUser, openAuthModal }) => {
 
                 setTours(tourData);
 
-                // Встановлюємо першу країну як вибрану, якщо нічого не вибрано
                 if (!selectedCountry && tourData.length > 0) {
                     setSelectedCountry(countries[0].id);
                 }
@@ -71,11 +89,9 @@ const TourList = ({ isAuth, currentUser, openAuthModal }) => {
     }, []);
 
     useEffect(() => {
-        // Завантажуємо улюблені тури
         const fetchFavorites = async () => {
             try {
                 if (isAuth && currentUser) {
-                    // Отримуємо улюблені тури з Firestore
                     const favoritesQuery = query(
                         collection(db, "favorites"),
                         where("userId", "==", currentUser.uid)
@@ -86,7 +102,6 @@ const TourList = ({ isAuth, currentUser, openAuthModal }) => {
 
                     setFavorites(favoritesData);
                 } else {
-                    // Якщо користувач не авторизований, беремо дані з localStorage
                     const localFavorites = JSON.parse(localStorage.getItem("favorites")) || [];
                     setFavorites(localFavorites);
                 }
@@ -98,18 +113,14 @@ const TourList = ({ isAuth, currentUser, openAuthModal }) => {
         fetchFavorites();
     }, [isAuth, currentUser]);
 
-    // Функція для додавання/видалення туру з улюблених
     const toggleFavorite = async (e, tourId) => {
-        // Зупиняємо подальше розповсюдження події, щоб не переходити на сторінку деталей
         e.stopPropagation();
 
         try {
             if (isAuth && currentUser) {
-                // Перевіряємо, чи тур вже в улюблених
                 const isFavorite = favorites.includes(tourId);
 
                 if (isFavorite) {
-                    // Видаляємо з Firestore
                     const favoritesQuery = query(
                         collection(db, "favorites"),
                         where("userId", "==", currentUser.uid),
@@ -123,21 +134,17 @@ const TourList = ({ isAuth, currentUser, openAuthModal }) => {
                         await deleteDoc(doc(db, "favorites", favoriteDoc.id));
                     }
 
-                    // Оновлюємо стан
                     setFavorites(favorites.filter(id => id !== tourId));
                 } else {
-                    // Додаємо до Firestore
                     await addDoc(collection(db, "favorites"), {
                         userId: currentUser.uid,
                         tourId: tourId,
                         createdAt: new Date()
                     });
 
-                    // Оновлюємо стан
                     setFavorites([...favorites, tourId]);
                 }
             } else {
-                // Якщо користувач не авторизований, використовуємо localStorage
                 const localFavorites = JSON.parse(localStorage.getItem("favorites")) || [];
                 const isFavorite = localFavorites.includes(tourId);
 
@@ -156,23 +163,19 @@ const TourList = ({ isAuth, currentUser, openAuthModal }) => {
         }
     };
 
-    // Функція для відображення зірочок для рейтингу
     const renderStars = (rating) => {
         const stars = [];
         const fullStars = Math.floor(rating || 0);
         const hasHalfStar = (rating || 0) % 1 !== 0;
 
-        // Додаємо заповнені зірки
         for (let i = 0; i < fullStars; i++) {
             stars.push(<span key={`full-${i}`} className="star full">★</span>);
         }
 
-        // Додаємо половину зірки якщо потрібно
         if (hasHalfStar) {
             stars.push(<span key="half" className="star half">★</span>);
         }
 
-        // Додаємо пусті зірки до 5
         const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
         for (let i = 0; i < emptyStars; i++) {
             stars.push(<span key={`empty-${i}`} className="star empty">☆</span>);
@@ -181,43 +184,34 @@ const TourList = ({ isAuth, currentUser, openAuthModal }) => {
         return stars;
     };
 
-    // Обробник для вибору країни
     const handleCountrySelect = (countryId) => {
         setSelectedCountry(countryId);
     };
 
-    // Функція для сортування турів
     const handleSort = (field) => {
         if (sortBy.field === field) {
-            // Якщо це те саме поле, міняємо напрямок сортування
             setSortBy({ field, asc: !sortBy.asc });
         } else {
-            // Якщо нове поле, встановлюємо за зростанням
             setSortBy({ field, asc: true });
         }
     };
 
-    // Отримуємо відфільтровані і відсортовані тури
     const getFilteredAndSortedTours = () => {
-        // Фільтруємо за країною
         let filteredTours = tours;
         if (selectedCountry) {
             filteredTours = tours.filter(tour => tour.country === selectedCountry);
         }
 
-        // Сортуємо
         return [...filteredTours].sort((a, b) => {
             let valueA = a[sortBy.field] || 0;
             let valueB = b[sortBy.field] || 0;
 
-            // Для рядків
             if (typeof valueA === 'string') {
                 return sortBy.asc
                     ? valueA.localeCompare(valueB)
                     : valueB.localeCompare(valueA);
             }
 
-            // Для чисел
             return sortBy.asc ? valueA - valueB : valueB - valueA;
         });
     };
@@ -230,7 +224,6 @@ const TourList = ({ isAuth, currentUser, openAuthModal }) => {
         return <div className="error-message">{error}</div>;
     }
 
-    // Отримуємо відфільтровані і відсортовані тури
     const filteredAndSortedTours = getFilteredAndSortedTours();
     console.log("Відфільтровані та відсортовані тури:", filteredAndSortedTours.length);
 
@@ -239,7 +232,6 @@ const TourList = ({ isAuth, currentUser, openAuthModal }) => {
             <h2>Ласкаво просимо на нашу туристичну платформу!</h2>
             <p>Оберіть один із розділів нижче, щоб переглянути доступні тури.</p>
 
-            {/* Вкладки країн */}
             <div className="country-tabs">
                 {countries.map(country => (
                     <div
@@ -249,20 +241,15 @@ const TourList = ({ isAuth, currentUser, openAuthModal }) => {
                         onClick={() => handleCountrySelect(country.id)}
                     >
                         <img
-                            src={fixImagePath(country.image)}
+                            src={getImageUrl(country.image)}
                             alt={country.name}
-                            onError={(e) => {
-                                console.error('Помилка завантаження зображення країни:', e);
-                                e.target.src = 'photo/placeholder.jpg';
-                                e.target.onerror = null;
-                            }}
+                            onError={handleImageError}
                         />
                         <h3>{country.name}</h3>
                     </div>
                 ))}
             </div>
 
-            {/* Секція з турами */}
             {selectedCountry && (
                 <div className="tours-section">
                     <div className="section-header">
@@ -289,18 +276,13 @@ const TourList = ({ isAuth, currentUser, openAuthModal }) => {
                         </div>
                     </div>
 
-                    {/* Картки турів */}
                     <div className="tour-cards-container">
                         {filteredAndSortedTours.map(tour => (
                             <div key={tour.id} className="tour-card" data-id={tour.id}>
                                 <img
-                                    src={fixImagePath(tour.imageUrl)}
+                                    src={getImageUrl(tour.imageUrl)}
                                     alt={tour.name}
-                                    onError={(e) => {
-                                        console.error('Помилка завантаження зображення туру:', e);
-                                        e.target.src = 'photo/placeholder.jpg';
-                                        e.target.onerror = null;
-                                    }}
+                                    onError={handleImageError}
                                 />
                                 <button
                                     className={`like-btn ${favorites.includes(tour.id) ? 'liked' : ''}`}

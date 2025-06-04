@@ -19,15 +19,12 @@ const TourDetail = ({ isAuth, openAuthModal }) => {
     useEffect(() => {
         const fetchTourData = async () => {
             try {
-                // Додаємо логування для відстеження проблеми
                 console.log('Отримуємо дані туру з ID:', id);
 
-                // Отримуємо дані про тур
                 const tourData = await getTourById(id);
                 console.log('Отримані дані туру:', tourData);
                 setTour(tourData);
 
-                // Отримуємо відгуки
                 const reviewsData = await getReviewsForTour(id);
                 console.log('Отримані відгуки:', reviewsData);
                 setReviews(reviewsData);
@@ -47,22 +44,30 @@ const TourDetail = ({ isAuth, openAuthModal }) => {
         }
     }, [id]);
 
-    // Функція для виправлення шляхів до зображень
-    const fixImagePath = (imagePath) => {
-        if (!imagePath) return 'photo/placeholder.jpg'; // Шлях до зображення-заглушки
+    // Виправлена функція для обробки шляхів до зображень
+    const getImageUrl = (imagePath) => {
+        if (!imagePath) {
+            console.log('Зображення не вказано, використовуємо placeholder');
+            return `${process.env.PUBLIC_URL}/photo/placeholder.jpg`;
+        }
 
-        // Якщо шлях починається з http або https, то це повний URL
+        // Якщо це повний URL (починається з http/https)
         if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
             return imagePath;
         }
 
-        // Якщо шлях починається з "/", прибираємо його
-        if (imagePath.startsWith('/')) {
-            return imagePath.substring(1);
-        }
+        // Логуємо оригінальний шлях
+        console.log('Оригінальний шлях зображення:', imagePath);
 
-        // Інакше повертаємо як є
-        return imagePath;
+        // Видаляємо початковий слеш якщо є
+        let cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+
+        // Формуємо повний шлях через process.env.PUBLIC_URL
+        const fullPath = `${process.env.PUBLIC_URL}/${cleanPath}`;
+
+        console.log('Сформований шлях до зображення:', fullPath);
+
+        return fullPath;
     };
 
     // Функція для відображення зірочок для рейтингу
@@ -71,17 +76,14 @@ const TourDetail = ({ isAuth, openAuthModal }) => {
         const fullStars = Math.floor(rating);
         const hasHalfStar = rating % 1 !== 0;
 
-        // Додаємо заповнені зірки
         for (let i = 0; i < fullStars; i++) {
             stars.push(<span key={`full-${i}`} className="star full">★</span>);
         }
 
-        // Додаємо половину зірки якщо потрібно
         if (hasHalfStar) {
             stars.push(<span key="half" className="star half">★</span>);
         }
 
-        // Додаємо пусті зірки до 5
         const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
         for (let i = 0; i < emptyStars; i++) {
             stars.push(<span key={`empty-${i}`} className="star empty">☆</span>);
@@ -112,7 +114,6 @@ const TourDetail = ({ isAuth, openAuthModal }) => {
         }
 
         try {
-            // Додаємо відгук
             await addReview(
                 id,
                 auth.currentUser.uid,
@@ -121,11 +122,9 @@ const TourDetail = ({ isAuth, openAuthModal }) => {
                 rating
             );
 
-            // Оновлюємо список відгуків
             const updatedReviews = await getReviewsForTour(id);
             setReviews(updatedReviews);
 
-            // Оновлюємо дані про тур, щоб відобразити оновлений рейтинг
             const updatedTour = await getTourById(id);
             setTour(updatedTour);
         } catch (error) {
@@ -134,9 +133,43 @@ const TourDetail = ({ isAuth, openAuthModal }) => {
         }
     };
 
-    // Обробник успішного бронювання
     const handleBookingSuccess = () => {
         setShowBookingForm(false);
+    };
+
+    // Обробник помилки завантаження зображення
+    const handleImageError = (e) => {
+        console.error('Помилка завантаження зображення:', e.target.src);
+
+        // Якщо це не placeholder, спробуємо загрузити placeholder
+        if (!e.target.src.includes('placeholder.jpg')) {
+            console.log('Спробуємо завантажити placeholder');
+            e.target.src = `${process.env.PUBLIC_URL}/photo/placeholder.jpg`;
+        } else {
+            // Якщо навіть placeholder не завантажується, показуємо стандартний fallback
+            console.log('Placeholder також не завантажується, використовуємо fallback');
+            e.target.style.display = 'none';
+
+            // Створюємо div з текстом замість зображення
+            const fallbackDiv = document.createElement('div');
+            fallbackDiv.className = 'image-fallback';
+            fallbackDiv.style.cssText = `
+                width: 100%;
+                height: 300px;
+                background-color: #f0f0f0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #666;
+                font-size: 18px;
+                border-radius: 8px;
+            `;
+            fallbackDiv.textContent = 'Зображення недоступне';
+
+            e.target.parentNode.insertBefore(fallbackDiv, e.target);
+        }
+
+        e.target.onerror = null; // Уникаємо безкінечного циклу
     };
 
     if (loading) {
@@ -144,16 +177,25 @@ const TourDetail = ({ isAuth, openAuthModal }) => {
     }
 
     if (error) {
-        return <div className="error-message">{error}</div>;
+        return (
+            <div className="error-message">
+                {error}
+                <button onClick={() => navigate('/')}>Повернутися на головну</button>
+            </div>
+        );
     }
 
     if (!tour) {
-        return <div className="error-message">Тур не знайдено. <button onClick={() => navigate('/')}>Повернутися на головну</button></div>;
+        return (
+            <div className="error-message">
+                Тур не знайдено.
+                <button onClick={() => navigate('/')}>Повернутися на головну</button>
+            </div>
+        );
     }
 
-    // Додаємо логування для перевірки шляху зображення
-    console.log('Оригінальний шлях зображення:', tour.imageUrl);
-    console.log('Виправлений шлях зображення:', fixImagePath(tour.imageUrl));
+    const imageUrl = getImageUrl(tour.imageUrl);
+    console.log('Фінальний URL зображення:', imageUrl);
 
     return (
         <div className="tour-detail">
@@ -163,28 +205,21 @@ const TourDetail = ({ isAuth, openAuthModal }) => {
             </div>
 
             <div className="tour-gallery">
-                {/* Виправляємо шлях до головного зображення */}
                 <img
-                    src={fixImagePath(tour.imageUrl)}
+                    src={imageUrl}
                     alt={tour.name}
                     className="tour-main-image"
-                    onError={(e) => {
-                        console.error('Помилка завантаження зображення:', e);
-                        e.target.src = 'photo/placeholder.jpg'; // Запасне зображення
-                        e.target.onerror = null; // Уникаємо безкінечного циклу
-                    }}
+                    onError={handleImageError}
+                    onLoad={() => console.log('Зображення успішно завантажено:', imageUrl)}
                 />
                 {tour.additionalImages && tour.additionalImages.length > 0 && (
                     <div className="additional-images">
                         {tour.additionalImages.map((img, index) => (
                             <img
                                 key={index}
-                                src={fixImagePath(img)}
+                                src={getImageUrl(img)}
                                 alt={`${tour.name} ${index + 1}`}
-                                onError={(e) => {
-                                    e.target.src = 'photo/placeholder.jpg';
-                                    e.target.onerror = null;
-                                }}
+                                onError={handleImageError}
                             />
                         ))}
                     </div>
@@ -266,7 +301,6 @@ const TourDetail = ({ isAuth, openAuthModal }) => {
                 </div>
             </div>
 
-            {/* Відображаємо форму бронювання, якщо showBookingForm=true */}
             {showBookingForm && isAuth && (
                 <div className="booking-section">
                     <BookingForm

@@ -4,7 +4,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
-  signOut,
+  // signOut - видалили невикористану імпорт
 } from "firebase/auth";
 
 const Auth = ({ setIsAuth, onSuccess }) => {
