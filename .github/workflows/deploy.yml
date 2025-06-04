@@ -5,13 +5,11 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
-# Додаємо права доступу для GITHUB_TOKEN
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Дозволяємо тільки один concurrent deployment
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -32,7 +30,8 @@ jobs:
       - name: Install dependencies
         run: |
           cd frontend
-          npm ci
+          # Використовуємо npm install замість npm ci
+          npm install
 
       - name: Build
         run: |
