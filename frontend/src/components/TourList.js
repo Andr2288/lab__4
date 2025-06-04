@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getAllTours } from "../services/tourService";
-import { db, auth } from "../config/firebase";
+import { db } from "../config/firebase";
 import {
     collection,
     query,
     where,
     getDocs,
     addDoc,
-    deleteDoc
+    deleteDoc,
+    doc
 } from "firebase/firestore";
 
-const TourList = ({ isAuth, currentUser }) => {
+const TourList = ({ isAuth, currentUser, openAuthModal }) => {
     const [tours, setTours] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -26,12 +27,38 @@ const TourList = ({ isAuth, currentUser }) => {
         { id: "japan", name: "Японія", image: "photo/japan.jpg" },
     ];
 
+    // Функція для виправлення шляхів до зображень
+    const fixImagePath = (imagePath) => {
+        if (!imagePath) return 'photo/placeholder.jpg'; // Шлях до зображення-заглушки
+
+        // Якщо шлях починається з http або https, то це повний URL
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+            return imagePath;
+        }
+
+        // Якщо шлях починається з "/", прибираємо його
+        if (imagePath.startsWith('/')) {
+            return imagePath.substring(1);
+        }
+
+        // Інакше повертаємо як є
+        return imagePath;
+    };
+
     useEffect(() => {
         // Завантажуємо тури
         const fetchTours = async () => {
             try {
+                console.log('Отримуємо список всіх турів');
                 const tourData = await getAllTours();
+                console.log('Отримані тури:', tourData.length);
+
                 setTours(tourData);
+
+                // Встановлюємо першу країну як вибрану, якщо нічого не вибрано
+                if (!selectedCountry && tourData.length > 0) {
+                    setSelectedCountry(countries[0].id);
+                }
             } catch (err) {
                 console.error("Помилка отримання турів:", err);
                 setError("Не вдалося завантажити тури. Спробуйте оновити сторінку.");
@@ -72,7 +99,10 @@ const TourList = ({ isAuth, currentUser }) => {
     }, [isAuth, currentUser]);
 
     // Функція для додавання/видалення туру з улюблених
-    const toggleFavorite = async (tourId) => {
+    const toggleFavorite = async (e, tourId) => {
+        // Зупиняємо подальше розповсюдження події, щоб не переходити на сторінку деталей
+        e.stopPropagation();
+
         try {
             if (isAuth && currentUser) {
                 // Перевіряємо, чи тур вже в улюблених
@@ -90,7 +120,7 @@ const TourList = ({ isAuth, currentUser }) => {
 
                     if (!favoritesSnapshot.empty) {
                         const favoriteDoc = favoritesSnapshot.docs[0];
-                        await deleteDoc(favoriteDoc.ref);
+                        await deleteDoc(doc(db, "favorites", favoriteDoc.id));
                     }
 
                     // Оновлюємо стан
@@ -200,6 +230,10 @@ const TourList = ({ isAuth, currentUser }) => {
         return <div className="error-message">{error}</div>;
     }
 
+    // Отримуємо відфільтровані і відсортовані тури
+    const filteredAndSortedTours = getFilteredAndSortedTours();
+    console.log("Відфільтровані та відсортовані тури:", filteredAndSortedTours.length);
+
     return (
         <section id="hot-tours">
             <h2>Ласкаво просимо на нашу туристичну платформу!</h2>
@@ -214,7 +248,15 @@ const TourList = ({ isAuth, currentUser }) => {
                         id={`${country.id}-tab`}
                         onClick={() => handleCountrySelect(country.id)}
                     >
-                        <img src={country.image} alt={country.name} />
+                        <img
+                            src={fixImagePath(country.image)}
+                            alt={country.name}
+                            onError={(e) => {
+                                console.error('Помилка завантаження зображення країни:', e);
+                                e.target.src = 'photo/placeholder.jpg';
+                                e.target.onerror = null;
+                            }}
+                        />
                         <h3>{country.name}</h3>
                     </div>
                 ))}
@@ -249,12 +291,20 @@ const TourList = ({ isAuth, currentUser }) => {
 
                     {/* Картки турів */}
                     <div className="tour-cards-container">
-                        {getFilteredAndSortedTours().map(tour => (
+                        {filteredAndSortedTours.map(tour => (
                             <div key={tour.id} className="tour-card" data-id={tour.id}>
-                                <img src={tour.imageUrl} alt={tour.name} />
+                                <img
+                                    src={fixImagePath(tour.imageUrl)}
+                                    alt={tour.name}
+                                    onError={(e) => {
+                                        console.error('Помилка завантаження зображення туру:', e);
+                                        e.target.src = 'photo/placeholder.jpg';
+                                        e.target.onerror = null;
+                                    }}
+                                />
                                 <button
                                     className={`like-btn ${favorites.includes(tour.id) ? 'liked' : ''}`}
-                                    onClick={() => toggleFavorite(tour.id)}
+                                    onClick={(e) => toggleFavorite(e, tour.id)}
                                 >
                                     ❤️
                                 </button>

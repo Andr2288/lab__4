@@ -69,15 +69,25 @@ function App() {
                       className="profile-icon"
                       id="profile-icon"
                       title={user.displayName || user.email}
+                      onError={(e) => {
+                        console.error('Помилка завантаження зображення профілю:', e);
+                        e.target.src = 'photo/placeholder.jpg';
+                        e.target.onerror = null;
+                      }}
                   />
               ) : (
                   <img
-                      src="../public/photo/profile.jpg"
+                      src="photo/profile.jpg"
                       alt="Профіль"
                       className="profile-icon"
                       id="profile-icon"
                       onClick={openAuthModal}
                       style={{ cursor: 'pointer' }}
+                      onError={(e) => {
+                        console.error('Помилка завантаження зображення профілю:', e);
+                        e.target.src = 'photo/placeholder.jpg';
+                        e.target.onerror = null;
+                      }}
                   />
               )}
             </div>
@@ -119,7 +129,7 @@ function App() {
           {/* Модальне вікно для автентифікації */}
           {showAuthModal && (
               <div className="modal" style={{ display: 'block' }} id="auth-modal">
-                <div className="modal-content">
+                <div className="modal-content" ref={authModalRef}>
                   <span
                       className="close"
                       onClick={closeAuthModal}

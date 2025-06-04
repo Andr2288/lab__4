@@ -1,7 +1,7 @@
 // Цей файл містить функцію для ініціалізації Firebase бази даних з демо-даними
 
 import { db } from '../config/firebase';
-import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, where, doc, deleteDoc } from 'firebase/firestore';
 
 // Демо-дані для турів
 const initialTours = [
@@ -318,7 +318,50 @@ export const initializeDatabase = async () => {
             console.log(`Додано ${addedTours.length} демо-турів.`);
             return true;
         } else {
-            console.log('База даних вже містить тури. Пропускаємо ініціалізацію.');
+            console.log('База даних вже містить тури. Перевіряємо наявність дублікатів...');
+
+            // Перевіряємо наявність дублікатів за назвою туру
+            const existingTours = toursSnapshot.docs.map(doc => ({
+                id: doc.id,
+                name: doc.data().name
+            }));
+
+            const tourNameCounts = {};
+            existingTours.forEach(tour => {
+                tourNameCounts[tour.name] = (tourNameCounts[tour.name] || 0) + 1;
+            });
+
+            const duplicateNames = Object.entries(tourNameCounts)
+                .filter(([name, count]) => count > 1)
+                .map(([name]) => name);
+
+            if (duplicateNames.length > 0) {
+                console.log(`Знайдено дублікати турів за назвою: ${duplicateNames.join(', ')}`);
+                console.log('Видаляємо дублікати...');
+
+                // Для кожної назви з дублікатами
+                for (const name of duplicateNames) {
+                    // Знаходимо всі тури з такою назвою
+                    const duplicatesQuery = query(
+                        collection(db, 'tours'),
+                        where("name", "==", name)
+                    );
+
+                    const duplicatesSnapshot = await getDocs(duplicatesQuery);
+                    const duplicates = duplicatesSnapshot.docs;
+
+                    // Залишаємо перший тур, видаляємо інші
+                    for (let i = 1; i < duplicates.length; i++) {
+                        await deleteDoc(doc(db, 'tours', duplicates[i].id));
+                        console.log(`Видалено дублікат туру "${name}" з ID ${duplicates[i].id}`);
+                    }
+                }
+
+                console.log('Дублікати видалено.');
+                return true;
+            }
+
+            console.log('Дублікатів не знайдено.');
             return false;
         }
     } catch (error) {

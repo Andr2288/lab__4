@@ -6,7 +6,7 @@ import ReviewForm from './ReviewForm';
 import ReviewList from './ReviewList';
 import BookingForm from './BookingForm';
 
-const TourDetail = ({ isAuth }) => {
+const TourDetail = ({ isAuth, openAuthModal }) => {
     const { id } = useParams();
     const navigate = useNavigate();
 
@@ -19,12 +19,17 @@ const TourDetail = ({ isAuth }) => {
     useEffect(() => {
         const fetchTourData = async () => {
             try {
+                // Додаємо логування для відстеження проблеми
+                console.log('Отримуємо дані туру з ID:', id);
+
                 // Отримуємо дані про тур
                 const tourData = await getTourById(id);
+                console.log('Отримані дані туру:', tourData);
                 setTour(tourData);
 
                 // Отримуємо відгуки
                 const reviewsData = await getReviewsForTour(id);
+                console.log('Отримані відгуки:', reviewsData);
                 setReviews(reviewsData);
             } catch (err) {
                 console.error('Помилка при завантаженні даних:', err);
@@ -34,8 +39,31 @@ const TourDetail = ({ isAuth }) => {
             }
         };
 
-        fetchTourData();
+        if (id) {
+            fetchTourData();
+        } else {
+            setError('Не знайдено ID туру');
+            setLoading(false);
+        }
     }, [id]);
+
+    // Функція для виправлення шляхів до зображень
+    const fixImagePath = (imagePath) => {
+        if (!imagePath) return 'photo/placeholder.jpg'; // Шлях до зображення-заглушки
+
+        // Якщо шлях починається з http або https, то це повний URL
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+            return imagePath;
+        }
+
+        // Якщо шлях починається з "/", прибираємо його
+        if (imagePath.startsWith('/')) {
+            return imagePath.substring(1);
+        }
+
+        // Інакше повертаємо як є
+        return imagePath;
+    };
 
     // Функція для відображення зірочок для рейтингу
     const renderStars = (rating) => {
@@ -65,7 +93,9 @@ const TourDetail = ({ isAuth }) => {
     const handleBookTour = () => {
         if (!isAuth) {
             alert('Будь ласка, увійдіть в систему для бронювання туру');
-            document.getElementById('auth-modal').style.display = 'block';
+            if (openAuthModal) {
+                openAuthModal();
+            }
             return;
         }
 
@@ -75,7 +105,9 @@ const TourDetail = ({ isAuth }) => {
     const handleAddReview = async (text, rating) => {
         if (!isAuth) {
             alert('Будь ласка, увійдіть в систему, щоб залишити відгук');
-            document.getElementById('auth-modal').style.display = 'block';
+            if (openAuthModal) {
+                openAuthModal();
+            }
             return;
         }
 
@@ -116,8 +148,12 @@ const TourDetail = ({ isAuth }) => {
     }
 
     if (!tour) {
-        return <div>Тур не знайдено</div>;
+        return <div className="error-message">Тур не знайдено. <button onClick={() => navigate('/')}>Повернутися на головну</button></div>;
     }
+
+    // Додаємо логування для перевірки шляху зображення
+    console.log('Оригінальний шлях зображення:', tour.imageUrl);
+    console.log('Виправлений шлях зображення:', fixImagePath(tour.imageUrl));
 
     return (
         <div className="tour-detail">
@@ -127,11 +163,29 @@ const TourDetail = ({ isAuth }) => {
             </div>
 
             <div className="tour-gallery">
-                <img src={tour.imageUrl} alt={tour.name} className="tour-main-image" />
-                {tour.additionalImages && (
+                {/* Виправляємо шлях до головного зображення */}
+                <img
+                    src={fixImagePath(tour.imageUrl)}
+                    alt={tour.name}
+                    className="tour-main-image"
+                    onError={(e) => {
+                        console.error('Помилка завантаження зображення:', e);
+                        e.target.src = 'photo/placeholder.jpg'; // Запасне зображення
+                        e.target.onerror = null; // Уникаємо безкінечного циклу
+                    }}
+                />
+                {tour.additionalImages && tour.additionalImages.length > 0 && (
                     <div className="additional-images">
                         {tour.additionalImages.map((img, index) => (
-                            <img key={index} src={img} alt={`${tour.name} ${index + 1}`} />
+                            <img
+                                key={index}
+                                src={fixImagePath(img)}
+                                alt={`${tour.name} ${index + 1}`}
+                                onError={(e) => {
+                                    e.target.src = 'photo/placeholder.jpg';
+                                    e.target.onerror = null;
+                                }}
+                            />
                         ))}
                     </div>
                 )}
@@ -142,7 +196,7 @@ const TourDetail = ({ isAuth }) => {
                     <h2>Опис туру</h2>
                     <p>{tour.description}</p>
 
-                    {tour.includes && (
+                    {tour.includes && tour.includes.length > 0 && (
                         <>
                             <h3>Що включено:</h3>
                             <ul className="tour-includes">
@@ -153,7 +207,7 @@ const TourDetail = ({ isAuth }) => {
                         </>
                     )}
 
-                    {tour.program && (
+                    {tour.program && tour.program.length > 0 && (
                         <>
                             <h3>Програма туру:</h3>
                             <div className="tour-program">
@@ -183,11 +237,11 @@ const TourDetail = ({ isAuth }) => {
                             <div className="detail-item">
                                 <span className="detail-label">Рейтинг:</span>
                                 <span className="detail-value">
-                  <div className="stars-container">
-                    {renderStars(tour.rating || 0)}
-                  </div>
+                                    <div className="stars-container">
+                                        {renderStars(tour.rating || 0)}
+                                    </div>
                                     {tour.rating ? tour.rating.toFixed(1) : '0'}/5
-                </span>
+                                </span>
                             </div>
                             <div className="detail-item">
                                 <span className="detail-label">Група:</span>
@@ -202,7 +256,7 @@ const TourDetail = ({ isAuth }) => {
                         ) : (
                             <button
                                 className="btn-disabled"
-                                onClick={() => document.getElementById('auth-modal').style.display = 'block'}
+                                onClick={openAuthModal}
                                 title="Увійдіть для бронювання"
                             >
                                 Увійдіть для бронювання
@@ -232,7 +286,7 @@ const TourDetail = ({ isAuth }) => {
                     <p className="login-prompt">
                         <button
                             className="btn-login"
-                            onClick={() => document.getElementById('auth-modal').style.display = 'block'}
+                            onClick={openAuthModal}
                         >
                             Увійдіть
                         </button> щоб залишити відгук

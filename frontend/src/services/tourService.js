@@ -20,13 +20,31 @@ const BOOKINGS_COLLECTION = 'bookings';
 // Отримати всі тури
 export const getAllTours = async () => {
     try {
+        console.log("Отримуємо тури з колекції:", TOURS_COLLECTION);
         const toursCollectionRef = collection(db, TOURS_COLLECTION);
         const snapshot = await getDocs(toursCollectionRef);
 
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
+        // Виведемо в консоль кількість отриманих документів
+        console.log(`Отримано ${snapshot.docs.length} документів`);
+
+        // Перетворюємо документи в масив об'єктів, перевіряючи унікальність ID
+        const uniqueToursMap = new Map();
+
+        snapshot.docs.forEach(doc => {
+            // Перевіримо, чи вже є тур з таким ID
+            if (!uniqueToursMap.has(doc.id)) {
+                uniqueToursMap.set(doc.id, {
+                    id: doc.id,
+                    ...doc.data()
+                });
+            }
+        });
+
+        // Конвертуємо Map назад у масив
+        const tours = Array.from(uniqueToursMap.values());
+        console.log(`Повертаємо ${tours.length} унікальних турів`);
+
+        return tours;
     } catch (error) {
         console.error("Помилка при отриманні списку турів:", error);
         throw error;
@@ -36,12 +54,21 @@ export const getAllTours = async () => {
 // Отримати конкретний тур за ID
 export const getTourById = async (tourId) => {
     try {
+        if (!tourId) {
+            throw new Error('ID туру не вказано');
+        }
+
+        console.log(`Отримуємо тур з ID: ${tourId}`);
+
         const tourDocRef = doc(db, TOURS_COLLECTION, tourId);
         const tourDoc = await getDoc(tourDocRef);
 
         if (!tourDoc.exists()) {
+            console.error(`Тур з ID ${tourId} не знайдено`);
             throw new Error(`Тур з ID ${tourId} не знайдено`);
         }
+
+        console.log(`Тур знайдено, дані:`, tourDoc.data());
 
         return {
             id: tourDoc.id,
@@ -101,6 +128,10 @@ export const deleteTour = async (tourId) => {
 // Додати відгук до туру
 export const addReview = async (tourId, userId, userName, text, rating) => {
     try {
+        if (!tourId) {
+            throw new Error('ID туру не вказано');
+        }
+
         const reviewsCollectionRef = collection(db, REVIEWS_COLLECTION);
         const newReviewRef = await addDoc(reviewsCollectionRef, {
             tourId,
@@ -124,6 +155,10 @@ export const addReview = async (tourId, userId, userName, text, rating) => {
 // Отримати всі відгуки для конкретного туру
 export const getReviewsForTour = async (tourId) => {
     try {
+        if (!tourId) {
+            throw new Error('ID туру не вказано');
+        }
+
         const reviewsQuery = query(
             collection(db, REVIEWS_COLLECTION),
             where("tourId", "==", tourId)
@@ -167,6 +202,10 @@ const updateTourRating = async (tourId) => {
 // Додати бронювання туру
 export const bookTour = async (tourId, userId, bookingData) => {
     try {
+        if (!tourId) {
+            throw new Error('ID туру не вказано');
+        }
+
         const bookingsCollectionRef = collection(db, BOOKINGS_COLLECTION);
         const newBookingRef = await addDoc(bookingsCollectionRef, {
             tourId,
@@ -186,6 +225,10 @@ export const bookTour = async (tourId, userId, bookingData) => {
 // Отримати всі бронювання користувача
 export const getUserBookings = async (userId) => {
     try {
+        if (!userId) {
+            throw new Error('ID користувача не вказано');
+        }
+
         const bookingsQuery = query(
             collection(db, BOOKINGS_COLLECTION),
             where("userId", "==", userId)
@@ -200,11 +243,19 @@ export const getUserBookings = async (userId) => {
         // Додаємо інформацію про тур до кожного бронювання
         const bookingsWithTourInfo = await Promise.all(
             bookings.map(async (booking) => {
-                const tourInfo = await getTourById(booking.tourId);
-                return {
-                    ...booking,
-                    tour: tourInfo
-                };
+                try {
+                    const tourInfo = await getTourById(booking.tourId);
+                    return {
+                        ...booking,
+                        tour: tourInfo
+                    };
+                } catch (error) {
+                    console.error(`Не вдалося отримати інформацію про тур для бронювання ${booking.id}:`, error);
+                    return {
+                        ...booking,
+                        tour: { name: 'Інформація недоступна', imageUrl: '' }
+                    };
+                }
             })
         );
 
