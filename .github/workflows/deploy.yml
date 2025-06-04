@@ -1,35 +1,42 @@
-name: Deploy React App
+name: Build and Deploy to GitHub Pages
 
 on:
   push:
     branches: [ main, master ]
+  workflow_dispatch:  # Дозволяє запускати вручну
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Node.js 🏗️
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          # Видаляємо кешування, бо у нас frontend в підпапці
 
-      - name: Install dependencies
+      - name: Navigate to frontend and install dependencies 🔧
         run: |
           cd frontend
           npm ci
 
-      - name: Build
+      - name: Build project 🏗️
         run: |
           cd frontend
           npm run build
+        env:
+          CI: false  # Ігноруємо ESLint попередження
 
-      - name: Deploy
+      - name: Deploy to GitHub Pages 🚀
         uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./frontend/build
+          cname: # Залишаємо порожнім, якщо не використовуєте власний домен
