@@ -22,23 +22,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+          run_install: false
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'pnpm'
+          cache-dependency-path: 'frontend/pnpm-lock.yaml'
 
       - name: Install dependencies
         run: |
           cd frontend
-          # Використовуємо npm install замість npm ci
-          npm install
+          pnpm install --frozen-lockfile
 
       - name: Build
         run: |
           cd frontend
-          npm run build
+          pnpm build
         env:
           CI: false
+          # Додаємо змінні середовища для production build
+          REACT_APP_API_URL: https://lab-5-backend-fwi7.onrender.com/api
+          REACT_APP_ENV: production
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
